@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@import url("https://cdnjs.cloudflare.com/ajax/libs/pretendard/1.3.9/static/pretendard.min.css");
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideR {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes scaleUp {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-5px); }
+  75%      { transform: translateX(5px); }
+}
+
+.anim-up    { animation: slideUp  .32s cubic-bezier(.32,.72,0,1) forwards; }
+.anim-fade  { animation: fadeIn   .25s ease forwards; }
+.anim-slide { animation: slideR   .28s ease forwards; }
+.anim-scale { animation: scaleUp  .22s ease forwards; }
+.anim-shake { animation: shake    .35s ease; }
+
+.press { transition: transform .1s ease; }
+.press:active { transform: scale(0.97); }
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #f9fafb;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+}
+
+input,
+textarea,
+button {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
