@@ -29,9 +29,6 @@ async function drawCard(ctx, person, x, y, cW, cH) {
 
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(x, y, cW, cH);
-  ctx.strokeStyle = '#D1D5DB';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, cW, cH);
 
   const [idImg, licImg] = await Promise.all([
     person.idImage ? loadImage(person.idImage) : Promise.resolve(null),
@@ -107,6 +104,31 @@ export async function renderA4(people) {
     const x = P + col * (cW + G);
     const y = P + row * (cH + G);
     await drawCard(ctx, people[i], x, y, cW, cH);
+  }
+
+  // 격자 구분선 — 실제 행 수 기준으로 완전한 표 형태
+  const n        = Math.min(people.length, COLS * ROWS);
+  const numRows  = Math.ceil(n / COLS);
+  const gridTop  = P;
+  const gridBot  = P + numRows * cH + (numRows - 1) * G;
+
+  ctx.strokeStyle = '#CCCCCC';
+  ctx.lineWidth   = 1.2;
+
+  // 세로 구분선 1개 (전체 행 높이)
+  const xDiv = P + cW + G / 2;
+  ctx.beginPath();
+  ctx.moveTo(xDiv, gridTop);
+  ctx.lineTo(xDiv, gridBot);
+  ctx.stroke();
+
+  // 가로 구분선 (행 사이마다)
+  for (let r = 1; r < numRows; r++) {
+    const yDiv = P + r * cH + (r - 1) * G + G / 2;
+    ctx.beginPath();
+    ctx.moveTo(P, yDiv);
+    ctx.lineTo(W - P, yDiv);
+    ctx.stroke();
   }
 
   return canvas;

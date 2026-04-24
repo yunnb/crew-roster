@@ -43,7 +43,6 @@ export default function ImgUp({ image, onChange, label = '사진 촬영' }) {
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="sr-only"
         onChange={handleFile}
       />

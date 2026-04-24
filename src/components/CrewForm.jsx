@@ -1,16 +1,15 @@
 import Field from './ui/Field';
 import ImgUp from './ui/ImgUp';
 import { I } from './ui/Icons';
-import { fmtSSN, fmtPhone } from '../utils/formatters';
-import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 
 export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
-  const kb = useKeyboardOffset();
   return (
-    <>
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+
+      {/* 헤더 */}
       <div
-        className="sticky top-0 z-40 px-4 py-3 flex items-center gap-2"
-        style={{ background: 'rgba(249,250,251,0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+        className="flex-shrink-0 z-40 px-4 py-3 flex items-center gap-2"
+        style={{ background: 'rgba(249,250,251,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
       >
         <button
           type="button"
@@ -22,10 +21,11 @@ export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
         <span className="text-lg font-bold">{view === 'add' ? '명단 추가' : '정보 수정'}</span>
       </div>
 
-      <div className="px-4 pt-4 pb-32 anim-slide">
+      {/* 스크롤 가능한 입력 영역 */}
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 pt-4 pb-4 anim-slide">
         <div className="flex gap-4 justify-center mb-6">
-          <ImgUp image={form.idImage} onChange={form.setIdImage} label="신분증 촬영" />
-          <ImgUp image={form.licenseImage} onChange={form.setLicenseImage} label="면허증 촬영" />
+          <ImgUp image={form.idImage} onChange={form.setIdImage} label="신분증 선택" />
+          <ImgUp image={form.licenseImage} onChange={form.setLicenseImage} label="면허증 선택" />
         </div>
         <Field label="이름 *" value={form.name} onChange={form.setName} placeholder="홍길동" />
         <Field
@@ -33,17 +33,14 @@ export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
           value={form.ssn}
           onChange={form.setSsn}
           placeholder="000000-0000000"
-          formatter={fmtSSN}
-          maxLen={13}
+          numFormat="######-#######"
         />
         <Field
           label="전화번호"
           value={form.phone}
           onChange={form.setPhone}
           placeholder="010-0000-0000"
-          type="tel"
-          formatter={fmtPhone}
-          maxLen={11}
+          numFormat="###-####-####"
         />
         <Field
           label="주소"
@@ -51,18 +48,16 @@ export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
           onChange={form.setAddress}
           placeholder="서울특별시 강남구..."
           area
-          maxLen={100}
         />
       </div>
 
+      {/* 하단 제출 버튼 — flex-shrink-0으로 항상 키보드 위에 고정 */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-40 border-t border-gray-100 px-4 py-3"
+        className="flex-shrink-0 border-t border-gray-100 px-4 py-3"
         style={{
-          bottom: kb,
-          background: 'rgba(255,255,255,0.92)',
+          background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(20px)',
-          paddingBottom: kb ? 12 : 'max(12px,env(safe-area-inset-bottom))',
-          transition: 'bottom .2s ease',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
         }}
       >
         <button
@@ -73,6 +68,7 @@ export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
           {view === 'add' ? '추가하기' : '수정 완료'}
         </button>
       </div>
-    </>
+
+    </div>
   );
 }

@@ -1,18 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sheet from './ui/Sheet';
 import Modal from './ui/Modal';
 import Field from './ui/Field';
 import { I } from './ui/Icons';
-import { maskSSN, fmtSSN, fmtPhone } from '../utils/formatters';
+import { maskSSN } from '../utils/formatters';
 
 export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePerson }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing]               = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [ssn, setSsn] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName]     = useState('');
+  const [ssn, setSsn]       = useState('');
+  const [phone, setPhone]   = useState('');
   const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
+
+  /* 이미지 영역 swipe-down */
+  const swipeStartY = useRef(null);
+  const onImgTouchStart = e => { swipeStartY.current = e.touches[0].clientY; };
+  const onImgTouchEnd   = e => {
+    if (swipeStartY.current === null) return;
+    const delta = e.changedTouches[0].clientY - swipeStartY.current;
+    if (delta > 80 && !editing && onClose) onClose();
+    swipeStartY.current = null;
+  };
 
   useEffect(() => {
     if (detail) {
@@ -44,8 +54,8 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
 
   const infoRows = [
     { label: '주민등록번호', value: maskSSN(detail.ssn) },
-    { label: '전화번호', value: detail.phone },
-    { label: '주소', value: detail.address },
+    { label: '전화번호',     value: detail.phone },
+    { label: '주소',         value: detail.address },
   ].filter(r => r.value);
 
   return (
@@ -53,8 +63,12 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
       <Sheet open={open} onClose={editing ? undefined : onClose}>
         <div className="anim-scale">
 
-          {/* Images */}
-          <div className="flex gap-3 mb-5">
+          {/* ── 이미지 영역 (swipe-down 대상) ── */}
+          <div
+            className="flex gap-3 mb-5"
+            onTouchStart={onImgTouchStart}
+            onTouchEnd={onImgTouchEnd}
+          >
             <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center">
               {detail.idImage ? (
                 <img src={detail.idImage} alt="신분증" className="w-full h-full object-contain" />
@@ -77,7 +91,7 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
             </div>
           </div>
 
-          {/* View mode */}
+          {/* ── 보기 모드 ── */}
           {!editing ? (
             <>
               <div className="flex justify-between items-center mb-4">
@@ -91,14 +105,26 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
               </div>
 
               {infoRows.length > 0 && (
-                <div className="bg-gray-50 rounded-2xl overflow-hidden mb-4">
+                /* overflow-hidden 제거 → 주소 가로 스크롤 허용 */
+                <div className="bg-gray-50 rounded-2xl mb-4">
                   {infoRows.map((row, i) => (
                     <div
                       key={i}
-                      className="flex justify-between items-start px-4 py-3.5 border-b border-white last:border-0"
+                      className="flex items-start px-4 py-3.5 border-b border-white last:border-0 gap-3"
                     >
-                      <span className="text-sm text-gray-400 flex-shrink-0">{row.label}</span>
-                      <span className="text-sm font-medium text-gray-800 text-right ml-4 break-all">{row.value}</span>
+                      <span className="text-sm text-gray-400 flex-shrink-0 w-[88px]">{row.label}</span>
+                      {row.label === '주소' ? (
+                        /* 주소: 가로 스크롤 */
+                        <div className="flex-1 overflow-x-auto">
+                          <span className="text-sm font-medium text-gray-800 whitespace-nowrap block">
+                            {row.value}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-medium text-gray-800 text-right flex-1 break-all">
+                          {row.value}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -112,7 +138,7 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
               </button>
             </>
           ) : (
-            /* Edit mode */
+            /* ── 수정 모드 ── */
             <>
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-base font-bold text-gray-900 m-0">정보 수정</h2>
@@ -124,17 +150,14 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
                 value={ssn}
                 onChange={setSsn}
                 placeholder="000000-0000000"
-                formatter={fmtSSN}
-                maxLen={13}
+                numFormat="######-#######"
               />
               <Field
                 label="전화번호"
                 value={phone}
                 onChange={setPhone}
                 placeholder="010-0000-0000"
-                type="tel"
-                formatter={fmtPhone}
-                maxLen={11}
+                numFormat="###-####-####"
               />
               <Field
                 label="주소"

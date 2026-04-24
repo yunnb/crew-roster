@@ -92,7 +92,7 @@ export default function PinScreen({ onUnlock }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex-1 bg-gray-50 flex items-center justify-center">
         <div className="text-gray-300 text-sm">로딩 중...</div>
       </div>
     );
@@ -100,7 +100,7 @@ export default function PinScreen({ onUnlock }) {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-8">
+      <div className="flex-1 bg-gray-50 flex flex-col items-center justify-center px-8">
         <div className="anim-scale w-full max-w-xs">
           <div className="flex justify-center mb-6">
             <I.Lock />
@@ -130,7 +130,7 @@ export default function PinScreen({ onUnlock }) {
                 setCur(e.target.value.replace(/\D/g, ''));
                 setError('');
               }}
-              className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3.5 bg-white rounded-xl border-[1.5px] border-gray-200 outline-none focus:border-blue-400 transition-colors"
+              className="w-full text-center text-[16px] tracking-[0.5em] font-mono py-3.5 bg-white rounded-xl border-[1.5px] border-gray-200 outline-none focus:border-blue-400 transition-colors"
               placeholder="••••"
               autoComplete="off"
             />

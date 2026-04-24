@@ -45,7 +45,7 @@ export default function CrewList({
             value={query}
             onChange={e => onQueryChange(e.target.value)}
             placeholder="이름, 전화번호, 주소 검색"
-            className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border-0 outline-none text-[15px] text-gray-900 placeholder:text-gray-300 shadow-sm focus:shadow-md transition-shadow"
+            className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border-0 outline-none text-[16px] text-gray-900 placeholder:text-gray-300 shadow-sm focus:shadow-md transition-shadow"
           />
         </div>
 
@@ -66,7 +66,7 @@ export default function CrewList({
                   <button
                     key={v}
                     onClick={() => onSortChange(v)}
-                    className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer transition-colors
+                    className={`text-sm px-3 py-1.5 rounded-full border-0 cursor-pointer transition-colors min-h-[36px] flex items-center
                       ${sortBy === v
                         ? 'bg-blue-500 text-white'
                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -87,7 +87,7 @@ export default function CrewList({
         )}
       </div>
 
-      <div className={`pt-1 px-4 ${selected.size > 0 ? 'pb-32' : 'pb-8'}`}>
+      <div className="pt-1 px-4 pb-6">
         {list.length === 0 ? (
           <div className="text-center pt-24 px-6 anim-fade">
             <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
@@ -101,26 +101,32 @@ export default function CrewList({
             </div>
           </div>
         ) : (
-          list.map((person, i) => (
-            <div
-              key={person.id}
-              onClick={() => { onSetDetail(person); onSetSheet(true); }}
-              className="press flex items-center gap-4 bg-white mb-3 p-4 rounded-2xl cursor-pointer shadow-sm hover:shadow-lg transition-all duration-200"
-              style={{ animation: `slideR .3s ease ${i * 25}ms forwards`, opacity: 0 }}
-            >
-              <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                {person.idImage
-                  ? <img src={person.idImage} alt="" className="w-full h-full object-cover" />
-                  : <I.User />
-                }
+          <div className="bg-white rounded-2xl overflow-hidden">
+            {list.map((person, i) => (
+              <div
+                key={person.id}
+                onClick={() => { onSetDetail(person); onSetSheet(true); }}
+                className="press flex items-center gap-4 px-4 py-3.5 cursor-pointer active:bg-gray-50 transition-colors"
+                style={{
+                  borderBottom: i < list.length - 1 ? '1px solid #F3F4F6' : 'none',
+                  animation: `slideR .3s ease ${i * 25}ms forwards`,
+                  opacity: 0,
+                }}
+              >
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                  {person.idImage
+                    ? <img src={person.idImage} alt="" className="w-full h-full object-cover" />
+                    : <I.User />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-base font-semibold text-gray-800 truncate">{person.name}</div>
+                  <div className="text-sm text-gray-400 mt-0.5">{person.phone || '연락처 없음'}</div>
+                </div>
+                <Chk checked={selected.has(person.id)} onChange={() => onSelect(person.id)} />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-base font-semibold text-gray-800 truncate">{person.name}</div>
-                <div className="text-sm text-gray-400 mt-0.5">{person.phone || '연락처 없음'}</div>
-              </div>
-              <Chk checked={selected.has(person.id)} onChange={() => onSelect(person.id)} />
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </>

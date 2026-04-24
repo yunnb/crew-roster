@@ -3,7 +3,7 @@ import { db, dbLoad, dbSave, dbDelete } from './db';
 import { uid, getAgeFromSSN } from './utils/formatters';
 import { renderA4 } from './utils/exportA4';
 import { useCrewForm } from './hooks/useCrewForm';
-import { useKeyboardOffset } from './hooks/useKeyboardOffset';
+import { useViewportHeight } from './hooks/useKeyboardOffset';
 
 import PinScreen from './components/PinScreen';
 import CrewList from './components/CrewList';
@@ -12,9 +12,9 @@ import CrewSheet from './components/CrewSheet';
 import Toast from './components/ui/Toast';
 import { I } from './components/ui/Icons';
 
-const LEGACY_KEY = 'crew-roster-v3';
+const LEGACY_KEY   = 'crew-roster-v3';
 const SELECTED_KEY = 'crew-selected-ids';
-const ITEMS_PER_PAGE = 6; // 2×3 grid per export page
+const ITEMS_PER_PAGE = 6; // 2×3 grid
 
 async function migrateLegacyData() {
   const legacy = await dbLoad(LEGACY_KEY);
@@ -29,20 +29,21 @@ async function migrateLegacyData() {
 }
 
 export default function App() {
-  const [authed, setAuthed] = useState(false);
-  const [allPeople, setAllPeople] = useState([]);
-  const [selected, setSelected] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('list'); // 'list' | 'add'
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [authed, setAuthed]         = useState(false);
+  const [allPeople, setAllPeople]   = useState([]);
+  const [selected, setSelected]     = useState(new Set());
+  const [loading, setLoading]       = useState(true);
+  const [view, setView]             = useState('list');
+  const [sheetOpen, setSheetOpen]   = useState(false);
   const [sheetPerson, setSheetPerson] = useState(null);
-  const [query, setQuery] = useState('');
-  const [sortBy, setSortBy] = useState('ts'); // 'ts' | 'name' | 'age-desc' | 'age-asc'
-  const [toast, setToast] = useState({ message: '', visible: false });
-  const [exporting, setExporting] = useState(false);
+  const [query, setQuery]           = useState('');
+  const [sortBy, setSortBy]         = useState('ts');
+  const [toast, setToast]           = useState({ message: '', visible: false });
+  const [exporting, setExporting]   = useState(false);
 
   const form = useCrewForm();
-  const keyboardOffset = useKeyboardOffset();
+  // visualViewport.height → 가상 키보드 올라와도 레이아웃 밀림 방지
+  const vh   = useViewportHeight();
 
   const flash = useCallback(msg => {
     setToast({ message: msg, visible: true });
@@ -85,15 +86,10 @@ export default function App() {
     );
     return filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name, 'ko');
-        case 'age-desc':
-          return getAgeFromSSN(b.ssn) - getAgeFromSSN(a.ssn);
-        case 'age-asc':
-          return getAgeFromSSN(a.ssn) - getAgeFromSSN(b.ssn);
-        case 'ts':
-        default:
-          return b.ts - a.ts;
+        case 'name':     return a.name.localeCompare(b.name, 'ko');
+        case 'age-desc': return getAgeFromSSN(b.ssn) - getAgeFromSSN(a.ssn);
+        case 'age-asc':  return getAgeFromSSN(a.ssn) - getAgeFromSSN(b.ssn);
+        default:         return b.ts - a.ts;
       }
     });
   }, [allPeople, query, sortBy]);
@@ -118,12 +114,8 @@ export default function App() {
     flash('추가되었습니다');
   };
 
-  const updatePerson = async (person) => {
-    if (!person.name.trim()) {
-      flash('이름을 입력해주세요');
-      loadPeople(); // Reload to revert optimistic UI change
-      return;
-    }
+  const updatePerson = async person => {
+    if (!person.name.trim()) { flash('이름을 입력해주세요'); loadPeople(); return; }
     await db.people.update(person.id, {
       name: person.name.trim(),
       ssn: person.ssn,
@@ -159,33 +151,53 @@ export default function App() {
 
   const buildPages = async people => {
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const totalPages = Math.ceil(people.length / ITEMS_PER_PAGE);
     const pages = [];
     for (let i = 0; i < people.length; i += ITEMS_PER_PAGE) {
       const pageIdx = Math.floor(i / ITEMS_PER_PAGE) + 1;
       const canvas = await renderA4(people.slice(i, i + ITEMS_PER_PAGE));
-      pages.push({ canvas, name: `명단_${dateStr}_${pageIdx}.jpg` });
+      pages.push({ canvas, name: `명단_${dateStr}_${pageIdx}.png` });
     }
     return pages;
   };
 
+  /** PNG 저장 — 모바일은 Web Share API(갤러리 저장), 데스크탑은 blob download */
   const doExport = async () => {
     const people = allPeople.filter(p => selected.has(p.id));
     if (!people.length) { flash('내보낼 인원을 선택하세요'); return; }
     setExporting(true);
     try {
       const pages = await buildPages(people);
-      for (let i = 0; i < pages.length; i++) {
-        const a = document.createElement('a');
-        a.download = pages[i].name;
-        a.href = pages[i].canvas.toDataURL('image/jpeg', 0.95);
-        a.click();
-        if (i < pages.length - 1) await new Promise(r => setTimeout(r, 400));
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isMobile && typeof navigator.share === 'function') {
+        // 모바일: share sheet → 갤러리 저장
+        const files = await Promise.all(
+          pages.map(p => new Promise(res =>
+            p.canvas.toBlob(blob => res(new File([blob], p.name, { type: 'image/png' })), 'image/png')
+          ))
+        );
+        await navigator.share({ files, title: '인력 명단' });
+        flash(`${pages.length}장 완료`);
+      } else {
+        // 데스크탑: Blob Object URL 다운로드
+        for (const { canvas, name } of pages) {
+          await new Promise(resolve => {
+            canvas.toBlob(blob => {
+              const url = URL.createObjectURL(blob);
+              const a   = document.createElement('a');
+              a.href     = url;
+              a.download = name;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              setTimeout(() => { URL.revokeObjectURL(url); resolve(); }, 150);
+            }, 'image/png');
+          });
+        }
+        flash(`${pages.length}장 다운로드 완료`);
       }
-      flash(`${pages.length}장 다운로드 완료`);
     } catch (e) {
-      flash('오류가 발생했습니다');
-      console.error(e);
+      if (e?.name !== 'AbortError') { flash('오류가 발생했습니다'); console.error(e); }
     }
     setExporting(false);
   };
@@ -198,51 +210,66 @@ export default function App() {
       const pages = await buildPages(people);
       const files = await Promise.all(
         pages.map(p => new Promise(res =>
-          p.canvas.toBlob(blob => res(new File([blob], p.name, { type: 'image/jpeg' })), 'image/jpeg', 0.95)
+          p.canvas.toBlob(blob => res(new File([blob], p.name, { type: 'image/png' })), 'image/png')
         ))
       );
       await navigator.share({ files, title: '인력 명단' });
     } catch (e) {
-      if (e.name !== 'AbortError') {
-        flash('공유에 실패했습니다');
-        console.error(e);
-      }
+      if (e?.name !== 'AbortError') { flash('공유에 실패했습니다'); console.error(e); }
     }
     setExporting(false);
   };
 
-  if (!authed) return <PinScreen onUnlock={() => setAuthed(true)} />;
-
+  /* ───────────────────────────────────────────────
+   * 레이아웃
+   * - height: visualViewport.height → 키보드 올라와도 container가 줄어들어 밀림 없음
+   * - flex-col → 리스트(flex-1 스크롤) + 하단 바(flex-shrink-0)
+   * ─────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen max-w-md mx-auto relative bg-gray-50">
-      {view === 'list' && (
+    <div
+      className="max-w-md mx-auto bg-white flex flex-col overflow-hidden"
+      style={{
+        height: vh ? `${vh}px` : '100dvh',
+        transition: 'height 0.15s ease',
+      }}
+    >
+      {!authed ? (
+        <PinScreen onUnlock={() => setAuthed(true)} />
+      ) : view === 'add' ? (
+        <CrewForm
+          view={view}
+          form={form}
+          onReset={form.reset}
+          onSetView={setView}
+          onSubmit={addPerson}
+        />
+      ) : (
+        /* ── 리스트 뷰 ── */
         <>
-          <CrewList
-            loading={loading}
-            list={list}
-            query={query}
-            selected={selected}
-            allSelected={allSelected}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            onQueryChange={setQuery}
-            onToggleAll={toggleAll}
-            onSelect={toggleSelect}
-            onSetView={setView}
-            onSetDetail={setSheetPerson}
-            onSetSheet={setSheetOpen}
-            onReset={form.reset}
-          />
+          {/* 스크롤 영역 */}
+          <div className="flex-1 overflow-y-auto min-h-0 bg-gray-50">
+            <CrewList
+              loading={loading}
+              list={list}
+              query={query}
+              selected={selected}
+              allSelected={allSelected}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              onQueryChange={setQuery}
+              onToggleAll={toggleAll}
+              onSelect={toggleSelect}
+              onSetView={setView}
+              onSetDetail={setSheetPerson}
+              onSetSheet={setSheetOpen}
+              onReset={form.reset}
+            />
+          </div>
 
+          {/* 하단 내보내기 바 — flex-shrink-0, 키보드와 함께 자동으로 올라옴 */}
           <div
-            className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-40 border-t border-gray-100 px-4 py-3"
-            style={{
-              bottom: keyboardOffset,
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(20px)',
-              paddingBottom: keyboardOffset ? 12 : 'max(12px,env(safe-area-inset-bottom))',
-              transition: 'bottom .2s ease',
-            }}
+            className="flex-shrink-0 border-t border-gray-100 px-4 py-3 bg-white"
+            style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
           >
             <div className="text-xs text-gray-400 text-center mb-2 h-4">
               {selected.size > 0 && (
@@ -272,7 +299,7 @@ export default function App() {
                     : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-lg shadow-blue-200/40'
                   }`}
               >
-                {exporting ? '처리 중...' : <><I.Dl /> JPG 저장</>}
+                {exporting ? '처리 중...' : <><I.Dl /> 이미지 저장</>}
               </button>
             </div>
           </div>
@@ -285,16 +312,6 @@ export default function App() {
             onDelete={deletePerson}
           />
         </>
-      )}
-
-      {view === 'add' && (
-        <CrewForm
-          view={view}
-          form={form}
-          onReset={form.reset}
-          onSetView={setView}
-          onSubmit={addPerson}
-        />
       )}
 
       <Toast message={toast.message} visible={toast.visible} />
