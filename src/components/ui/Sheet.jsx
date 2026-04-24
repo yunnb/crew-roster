@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useViewportHeight } from '../../hooks/useKeyboardOffset';
 
 export default function Sheet({ open, onClose, children }) {
   const [vis, setVis] = useState(false);
   const [an, setAn] = useState(false);
+  const vh = useViewportHeight();
 
   useEffect(() => {
     if (open) {
@@ -30,7 +32,7 @@ export default function Sheet({ open, onClose, children }) {
         onClick={e => e.stopPropagation()}
         className="w-full bg-white rounded-t-3xl overflow-y-auto"
         style={{
-          maxHeight: "88vh",
+          maxHeight: vh ? `${Math.floor(vh * 0.92)}px` : "88vh",
           transform: an ? "translateY(0)" : "translateY(100%)",
           transition: "transform .32s cubic-bezier(.32,.72,0,1)",
         }}

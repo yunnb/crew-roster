@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { db, dbLoad, dbDelete } from './db';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { db, dbLoad, dbSave, dbDelete } from './db';
 import { uid, getAgeFromSSN } from './utils/formatters';
 import { renderA4 } from './utils/exportA4';
 import { useCrewForm } from './hooks/useCrewForm';
+import { useKeyboardOffset } from './hooks/useKeyboardOffset';
 
 import PinScreen from './components/PinScreen';
 import CrewList from './components/CrewList';
@@ -12,6 +13,7 @@ import Toast from './components/ui/Toast';
 import { I } from './components/ui/Icons';
 
 const LEGACY_KEY = 'crew-roster-v3';
+const SELECTED_KEY = 'crew-selected-ids';
 const ITEMS_PER_PAGE = 6; // 2×3 grid per export page
 
 async function migrateLegacyData() {
@@ -40,6 +42,7 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
 
   const form = useCrewForm();
+  const keyboardOffset = useKeyboardOffset();
 
   const flash = useCallback(msg => {
     setToast({ message: msg, visible: true });
@@ -51,14 +54,27 @@ export default function App() {
     setAllPeople(all);
   }, []);
 
+  const selectionHydrated = useRef(false);
+
   useEffect(() => {
     if (!authed) return;
     (async () => {
       await migrateLegacyData();
       await loadPeople();
+      const savedIds = await dbLoad(SELECTED_KEY);
+      if (Array.isArray(savedIds) && savedIds.length) {
+        const existing = new Set((await db.people.toArray()).map(p => p.id));
+        setSelected(new Set(savedIds.filter(id => existing.has(id))));
+      }
+      selectionHydrated.current = true;
       setLoading(false);
     })();
   }, [authed, loadPeople]);
+
+  useEffect(() => {
+    if (!authed || !selectionHydrated.current) return;
+    dbSave(SELECTED_KEY, Array.from(selected));
+  }, [selected, authed]);
 
   const list = useMemo(() => {
     const filtered = allPeople.filter(p =>
@@ -141,27 +157,56 @@ export default function App() {
     }
   };
 
+  const buildPages = async people => {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const totalPages = Math.ceil(people.length / ITEMS_PER_PAGE);
+    const pages = [];
+    for (let i = 0; i < people.length; i += ITEMS_PER_PAGE) {
+      const pageIdx = Math.floor(i / ITEMS_PER_PAGE) + 1;
+      const canvas = await renderA4(people.slice(i, i + ITEMS_PER_PAGE));
+      pages.push({ canvas, name: `명단_${dateStr}_${pageIdx}.jpg` });
+    }
+    return pages;
+  };
+
   const doExport = async () => {
     const people = allPeople.filter(p => selected.has(p.id));
     if (!people.length) { flash('내보낼 인원을 선택하세요'); return; }
-
     setExporting(true);
     try {
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const totalPages = Math.ceil(people.length / ITEMS_PER_PAGE);
-      for (let i = 0; i < people.length; i += ITEMS_PER_PAGE) {
-        const pageIdx = Math.floor(i / ITEMS_PER_PAGE) + 1;
-        const canvas = await renderA4(people.slice(i, i + ITEMS_PER_PAGE), pageIdx, totalPages);
+      const pages = await buildPages(people);
+      for (let i = 0; i < pages.length; i++) {
         const a = document.createElement('a');
-        a.download = `명단_${dateStr}_${pageIdx}.jpg`;
-        a.href = canvas.toDataURL('image/jpeg', 0.95);
+        a.download = pages[i].name;
+        a.href = pages[i].canvas.toDataURL('image/jpeg', 0.95);
         a.click();
-        if (i + ITEMS_PER_PAGE < people.length) await new Promise(r => setTimeout(r, 400));
+        if (i < pages.length - 1) await new Promise(r => setTimeout(r, 400));
       }
-      flash(`${totalPages}장 다운로드 완료`);
+      flash(`${pages.length}장 다운로드 완료`);
     } catch (e) {
       flash('오류가 발생했습니다');
       console.error(e);
+    }
+    setExporting(false);
+  };
+
+  const doShare = async () => {
+    const people = allPeople.filter(p => selected.has(p.id));
+    if (!people.length) { flash('공유할 인원을 선택하세요'); return; }
+    setExporting(true);
+    try {
+      const pages = await buildPages(people);
+      const files = await Promise.all(
+        pages.map(p => new Promise(res =>
+          p.canvas.toBlob(blob => res(new File([blob], p.name, { type: 'image/jpeg' })), 'image/jpeg', 0.95)
+        ))
+      );
+      await navigator.share({ files, title: '인력 명단' });
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        flash('공유에 실패했습니다');
+        console.error(e);
+      }
     }
     setExporting(false);
   };
@@ -190,29 +235,46 @@ export default function App() {
           />
 
           <div
-            className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 border-t border-gray-100 px-4 py-3"
+            className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-40 border-t border-gray-100 px-4 py-3"
             style={{
+              bottom: keyboardOffset,
               background: 'rgba(255,255,255,0.92)',
               backdropFilter: 'blur(20px)',
-              paddingBottom: 'max(12px,env(safe-area-inset-bottom))',
+              paddingBottom: keyboardOffset ? 12 : 'max(12px,env(safe-area-inset-bottom))',
+              transition: 'bottom .2s ease',
             }}
           >
             <div className="text-xs text-gray-400 text-center mb-2 h-4">
               {selected.size > 0 && (
-                <span className="font-bold text-blue-500 anim-fade">{selected.size}명</span>
+                <span className="font-bold text-blue-500 anim-fade">{selected.size}명 선택됨</span>
               )}
             </div>
-            <button
-              onClick={doExport}
-              disabled={exporting || selected.size === 0}
-              className={`w-full py-4 rounded-2xl text-base font-bold border-0 cursor-pointer flex items-center justify-center gap-2 transition-all
-                ${exporting || selected.size === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-lg shadow-blue-200/40'
-                }`}
-            >
-              {exporting ? '내보내는 중...' : <><I.Dl /> JPG로 내보내기</>}
-            </button>
+            <div className="flex gap-2">
+              {typeof navigator.share === 'function' && (
+                <button
+                  onClick={doShare}
+                  disabled={exporting || selected.size === 0}
+                  className={`flex-1 py-4 rounded-2xl text-base font-bold border cursor-pointer flex items-center justify-center gap-2 transition-all
+                    ${exporting || selected.size === 0
+                      ? 'border-gray-200 bg-white text-gray-300 cursor-not-allowed'
+                      : 'border-blue-500 bg-white text-blue-500 hover:bg-blue-50 active:scale-[0.98]'
+                    }`}
+                >
+                  <I.Share /> 공유하기
+                </button>
+              )}
+              <button
+                onClick={doExport}
+                disabled={exporting || selected.size === 0}
+                className={`flex-1 py-4 rounded-2xl text-base font-bold border-0 cursor-pointer flex items-center justify-center gap-2 transition-all
+                  ${exporting || selected.size === 0
+                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-lg shadow-blue-200/40'
+                  }`}
+              >
+                {exporting ? '처리 중...' : <><I.Dl /> JPG 저장</>}
+              </button>
+            </div>
           </div>
 
           <CrewSheet

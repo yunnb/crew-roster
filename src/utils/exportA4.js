@@ -1,91 +1,93 @@
-import { maskSSN } from './formatters';
+import { fmtSSN } from './formatters';
 
-const S = 3; // 1mm → 3px  (210mm × 297mm = 630 × 891 px)
+const S = 8; // 1mm → 8px  (210×297mm = 1680×2376px, ~200 DPI)
 const W = 210 * S;
 const H = 297 * S;
 const COLS = 2;
 const ROWS = 3;
 
-function drawImageOnCanvas(ctx, src, x, y, w, h, placeholder) {
+function loadImage(src) {
   return new Promise(resolve => {
-    const drawPlaceholder = () => {
-      ctx.fillStyle = '#F2F4F6';
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 2 * S);
-      ctx.fill();
-      ctx.fillStyle = '#CDD3DA';
-      ctx.font = `${3.5 * S}px Pretendard,sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(placeholder, x + w / 2, y + h / 2 + S);
-      resolve();
-    };
-
-    if (!src) { drawPlaceholder(); return; }
-
     const img = new Image();
-    img.onload = () => {
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 2 * S);
-      ctx.clip();
-      const r = Math.max(w / img.width, h / img.height);
-      const dw = img.width * r;
-      const dh = img.height * r;
-      ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-      ctx.restore();
-      resolve();
-    };
-    img.onerror = drawPlaceholder;
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
     img.src = src;
   });
 }
 
+function drawImg(ctx, img, x, y, w, h) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(x, y, w, h);
+  const r = Math.min(w / img.width, h / img.height);
+  const dw = img.width * r;
+  const dh = img.height * r;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
 async function drawCard(ctx, person, x, y, cW, cH) {
-  const ip = 4 * S;
+  const ip = 3 * S;
 
   ctx.fillStyle = '#FFFFFF';
-  ctx.beginPath();
-  ctx.roundRect(x, y, cW, cH, 3 * S);
-  ctx.fill();
-  ctx.strokeStyle = '#E5E8EB';
-  ctx.lineWidth = 0.5;
-  ctx.stroke();
+  ctx.fillRect(x, y, cW, cH);
+  ctx.strokeStyle = '#D1D5DB';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, cW, cH);
 
+  const [idImg, licImg] = await Promise.all([
+    person.idImage ? loadImage(person.idImage) : Promise.resolve(null),
+    person.licenseImage ? loadImage(person.licenseImage) : Promise.resolve(null),
+  ]);
+
+  // Images fill card width for maximum clarity
   const imgW = cW - ip * 2;
-  const imgH = Math.round(cH * 0.32);
-  await drawImageOnCanvas(ctx, person.idImage, x + ip, y + ip, imgW, imgH, '신분증 없음');
+  const imgH = Math.round(cH * 0.31);
+  const imgGap = 2 * S;
 
-  let ty = y + ip + imgH + 4 * S;
-  const cx = x + cW / 2;
+  const imgs = [idImg, licImg].filter(Boolean);
+  const imgBlockH = imgs.length > 0 ? imgs.length * imgH + (imgs.length - 1) * imgGap : 0;
+
+  // Text
+  const fontSize = 4.5 * S;
+  ctx.font = `${fontSize}px Pretendard,sans-serif`;
+  const maxTW = cW - ip * 2;
+  const textLines = [
+    person.name || null,
+    person.ssn ? fmtSSN(person.ssn) : null,
+    person.phone || null,
+    person.address
+      ? (ctx.measureText(person.address).width > maxTW
+          ? person.address.slice(0, 20) + '…'
+          : person.address)
+      : null,
+  ].filter(Boolean);
+
+  const lineH = 6 * S;
+  const textBlockH = textLines.length * lineH;
+  const sectionGap = imgBlockH > 0 ? 2 * S : 0;
+  const totalH = imgBlockH + sectionGap + textBlockH;
+
+  // Bottom-align
+  let curY = y + cH - ip - totalH;
+  const imgX = x + ip;
+
+  for (let i = 0; i < imgs.length; i++) {
+    drawImg(ctx, imgs[i], imgX, curY, imgW, imgH);
+    curY += imgH + (i < imgs.length - 1 ? imgGap : 0);
+  }
+
+  curY += sectionGap;
+
   ctx.textAlign = 'center';
-
-  ctx.fillStyle = '#191F28';
-  ctx.font = `bold ${6 * S}px Pretendard,sans-serif`;
-  ctx.fillText(person.name, cx, ty + 5 * S);
-  ty += 9 * S;
-
-  ctx.fillStyle = '#4E5968';
-  ctx.font = `${4 * S}px Pretendard,sans-serif`;
-
-  const addLine = text => {
-    if (!text) return;
-    ctx.fillText(text, cx, ty + 4 * S);
-    ty += 7 * S;
-  };
-
-  addLine(maskSSN(person.ssn));
-  addLine(person.phone);
-
-  if (person.address) {
-    const maxW = cW - ip * 2;
-    const displayed = ctx.measureText(person.address).width > maxW
-      ? person.address.slice(0, 22) + '…'
-      : person.address;
-    addLine(displayed);
+  ctx.fillStyle = '#111827';
+  const cx = x + cW / 2;
+  for (const line of textLines) {
+    curY += lineH * 0.78;
+    ctx.fillText(line, cx, curY);
+    curY += lineH * 0.22;
   }
 }
 
-export async function renderA4(people, pageIdx = 1, totalPages = 1) {
+export async function renderA4(people) {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -94,39 +96,16 @@ export async function renderA4(people, pageIdx = 1, totalPages = 1) {
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, W, H);
 
-  // Header
-  const headerH = 18 * S;
-  const P = 7 * S;
-
-  ctx.fillStyle = '#191F28';
-  ctx.font = `bold ${6 * S}px Pretendard,sans-serif`;
-  ctx.textAlign = 'left';
-  // ctx.fillText('인력 명단', P, headerH / 2 + 5 * S);
-
-  ctx.fillStyle = '#8B95A1';
-  ctx.font = `${4 * S}px Pretendard,sans-serif`;
-  ctx.textAlign = 'right';
-  // ctx.fillText(`${pageIdx} / ${totalPages} 페이지`, W - P, headerH / 2 + 5 * S);
-
-  ctx.strokeStyle = '#E5E8EB';
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(P, headerH + 2);
-  ctx.lineTo(W - P, headerH + 2);
-  // ctx.stroke();
-
-  // Grid layout
+  const P = 6 * S;
   const G = 4 * S;
-  const contentTop = headerH + P;
-  const contentH = H - contentTop - P;
   const cW = (W - P * 2 - G * (COLS - 1)) / COLS;
-  const cH = (contentH - G * (ROWS - 1)) / ROWS;
+  const cH = (H - P * 2 - G * (ROWS - 1)) / ROWS;
 
   for (let i = 0; i < Math.min(people.length, COLS * ROWS); i++) {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
     const x = P + col * (cW + G);
-    const y = contentTop + row * (cH + G);
+    const y = P + row * (cH + G);
     await drawCard(ctx, people[i], x, y, cW, cH);
   }
 

@@ -2,8 +2,10 @@ import Field from './ui/Field';
 import ImgUp from './ui/ImgUp';
 import { I } from './ui/Icons';
 import { fmtSSN, fmtPhone } from '../utils/formatters';
+import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 
 export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
+  const kb = useKeyboardOffset();
   return (
     <>
       <div
@@ -54,8 +56,14 @@ export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
       </div>
 
       <div
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 border-t border-gray-100 px-4 py-3"
-        style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', paddingBottom: 'max(12px,env(safe-area-inset-bottom))' }}
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-40 border-t border-gray-100 px-4 py-3"
+        style={{
+          bottom: kb,
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(20px)',
+          paddingBottom: kb ? 12 : 'max(12px,env(safe-area-inset-bottom))',
+          transition: 'bottom .2s ease',
+        }}
       >
         <button
           type="button"
