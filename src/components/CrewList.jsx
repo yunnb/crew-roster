@@ -50,36 +50,34 @@ export default function CrewList({
         </div>
 
         {list.length > 0 && (
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-400">
-                총 <strong className="text-gray-600">{list.length}</strong>명
-              </span>
-              <span className="text-gray-200 text-xs">|</span>
-              <div className="flex gap-1 overflow-x-auto flex-nowrap scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
-                {[
-                  { v: 'ts', label: '최신순' },
-                  { v: 'name', label: '이름순' },
-                  { v: 'age-desc', label: '나이많은순' },
-                  { v: 'age-asc', label: '나이어린순' },
-                ].map(({ v, label }) => (
-                  <button
-                    key={v}
-                    onClick={() => onSortChange(v)}
-                    className={`flex-shrink-0 text-sm px-3 py-1.5 rounded-full border-0 cursor-pointer transition-colors min-h-[36px] flex items-center
-                      ${sortBy === v
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+              총 <strong className="text-gray-600">{list.length}</strong>명
+            </span>
+            <span className="text-gray-200 text-xs flex-shrink-0">|</span>
+            <div className="flex gap-1 overflow-x-auto flex-nowrap scrollbar-none min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {[
+                { v: 'ts', label: '최신순' },
+                { v: 'name', label: '이름순' },
+                { v: 'age-desc', label: '나이많은순' },
+                { v: 'age-asc', label: '나이어린순' },
+              ].map(({ v, label }) => (
+                <button
+                  key={v}
+                  onClick={() => onSortChange(v)}
+                  className={`flex-shrink-0 text-sm px-3 py-1.5 rounded-full border-0 cursor-pointer transition-colors min-h-[36px] flex items-center
+                    ${sortBy === v
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             <button
               onClick={onToggleAll}
-              className="bg-transparent border-0 text-blue-500 text-xs font-semibold cursor-pointer p-0"
+              className="flex-shrink-0 whitespace-nowrap bg-transparent border-0 text-blue-500 text-xs font-semibold cursor-pointer p-0 pl-1"
             >
               {allSelected ? '선택 해제' : '전체 선택'}
             </button>

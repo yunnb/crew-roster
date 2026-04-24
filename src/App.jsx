@@ -95,8 +95,9 @@ export default function App() {
 
   const addPerson = async () => {
     if (!form.name.trim()) { flash('이름을 입력해주세요'); return; }
+    const newId = uid();
     await db.people.put({
-      id: uid(),
+      id: newId,
       name: form.name.trim(),
       ssn: form.ssn,
       phone: form.phone,
@@ -105,6 +106,7 @@ export default function App() {
       licenseImage: form.licenseImage,
       ts: Date.now(),
     });
+    setSelected(s => { const n = new Set(s); n.add(newId); return n; });
     form.reset();
     setView('list');
     await loadPeople();
@@ -118,6 +120,8 @@ export default function App() {
       ssn: person.ssn,
       phone: person.phone,
       address: person.address.trim(),
+      idImage: person.idImage ?? null,
+      licenseImage: person.licenseImage ?? null,
     });
     await loadPeople();
     flash('수정 완료');

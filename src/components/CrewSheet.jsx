@@ -2,17 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import Sheet from './ui/Sheet';
 import Modal from './ui/Modal';
 import Field from './ui/Field';
+import ImgUp from './ui/ImgUp';
 import { I } from './ui/Icons';
 import { maskSSN } from '../utils/formatters';
 
 export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePerson }) {
   const [editing, setEditing]               = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [name, setName]     = useState('');
-  const [ssn, setSsn]       = useState('');
-  const [phone, setPhone]   = useState('');
-  const [address, setAddress] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [name, setName]         = useState('');
+  const [ssn, setSsn]           = useState('');
+  const [phone, setPhone]       = useState('');
+  const [address, setAddress]   = useState('');
+  const [idImage, setIdImage]   = useState(null);
+  const [licenseImage, setLicenseImage] = useState(null);
+  const [saving, setSaving]     = useState(false);
 
   /* 이미지 영역 swipe-down */
   const swipeStartY = useRef(null);
@@ -30,6 +33,8 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
       setSsn(detail.ssn || '');
       setPhone(detail.phone || '');
       setAddress(detail.address || '');
+      setIdImage(detail.idImage || null);
+      setLicenseImage(detail.licenseImage || null);
     }
     setEditing(false);
   }, [detail]);
@@ -39,7 +44,7 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    await onUpdatePerson({ ...detail, name: name.trim(), ssn, phone, address });
+    await onUpdatePerson({ ...detail, name: name.trim(), ssn, phone, address, idImage, licenseImage });
     setSaving(false);
     setEditing(false);
   };
@@ -49,6 +54,8 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
     setSsn(detail.ssn || '');
     setPhone(detail.phone || '');
     setAddress(detail.address || '');
+    setIdImage(detail.idImage || null);
+    setLicenseImage(detail.licenseImage || null);
     setEditing(false);
   };
 
@@ -63,33 +70,40 @@ export default function CrewSheet({ open, detail, onClose, onDelete, onUpdatePer
       <Sheet open={open} onClose={editing ? undefined : onClose}>
         <div className="anim-scale">
 
-          {/* ── 이미지 영역 (swipe-down 대상) ── */}
-          <div
-            className="flex gap-3 mb-5"
-            onTouchStart={onImgTouchStart}
-            onTouchEnd={onImgTouchEnd}
-          >
-            <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center">
-              {detail.idImage ? (
-                <img src={detail.idImage} alt="신분증" className="w-full h-full object-contain" />
-              ) : (
-                <div className="text-center text-gray-300">
-                  <I.Camera />
-                  <div className="text-xs mt-1.5">신분증 없음</div>
-                </div>
-              )}
+          {/* ── 이미지 영역 ── */}
+          {editing ? (
+            <div className="flex gap-4 justify-center mb-5">
+              <ImgUp image={idImage} onChange={setIdImage} label="신분증 선택" />
+              <ImgUp image={licenseImage} onChange={setLicenseImage} label="면허증 선택" />
             </div>
-            <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center">
-              {detail.licenseImage ? (
-                <img src={detail.licenseImage} alt="운전면허증" className="w-full h-full object-contain" />
-              ) : (
-                <div className="text-center text-gray-300">
-                  <I.Camera />
-                  <div className="text-xs mt-1.5">면허증 없음</div>
-                </div>
-              )}
+          ) : (
+            <div
+              className="flex gap-3 mb-5"
+              onTouchStart={onImgTouchStart}
+              onTouchEnd={onImgTouchEnd}
+            >
+              <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center">
+                {detail.idImage ? (
+                  <img src={detail.idImage} alt="신분증" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="text-center text-gray-300">
+                    <I.Camera />
+                    <div className="text-xs mt-1.5">신분증 없음</div>
+                  </div>
+                )}
+              </div>
+              <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center">
+                {detail.licenseImage ? (
+                  <img src={detail.licenseImage} alt="운전면허증" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="text-center text-gray-300">
+                    <I.Camera />
+                    <div className="text-xs mt-1.5">면허증 없음</div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── 보기 모드 ── */}
           {!editing ? (
