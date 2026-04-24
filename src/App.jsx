@@ -3,7 +3,6 @@ import { db, dbLoad, dbSave, dbDelete } from './db';
 import { uid, getAgeFromSSN } from './utils/formatters';
 import { renderA4 } from './utils/exportA4';
 import { useCrewForm } from './hooks/useCrewForm';
-import { useViewportHeight } from './hooks/useKeyboardOffset';
 
 import PinScreen from './components/PinScreen';
 import CrewList from './components/CrewList';
@@ -42,8 +41,6 @@ export default function App() {
   const [exporting, setExporting]   = useState(false);
 
   const form = useCrewForm();
-  // visualViewport.height → 가상 키보드 올라와도 레이아웃 밀림 방지
-  const vh   = useViewportHeight();
 
   const flash = useCallback(msg => {
     setToast({ message: msg, visible: true });
@@ -227,10 +224,15 @@ export default function App() {
    * ─────────────────────────────────────────────── */
   return (
     <div
-      className="max-w-md mx-auto bg-white flex flex-col overflow-hidden"
+      className="bg-white flex flex-col overflow-hidden"
       style={{
-        height: vh ? `${vh}px` : '100dvh',
-        transition: 'height 0.15s ease',
+        position: 'fixed',
+        top: 0,
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '448px',
       }}
     >
       {!authed ? (
@@ -277,30 +279,33 @@ export default function App() {
               )}
             </div>
             <div className="flex gap-2">
-              {typeof navigator.share === 'function' && (
+              {typeof navigator.share === 'function' ? (
+                /* 모바일: 공유 시트로 저장 */
                 <button
                   onClick={doShare}
                   disabled={exporting || selected.size === 0}
-                  className={`flex-1 py-4 rounded-2xl text-base font-bold border cursor-pointer flex items-center justify-center gap-2 transition-all
+                  className={`flex-1 py-4 rounded-2xl text-base font-bold border-0 cursor-pointer flex items-center justify-center gap-2 transition-all
                     ${exporting || selected.size === 0
-                      ? 'border-gray-200 bg-white text-gray-300 cursor-not-allowed'
-                      : 'border-blue-500 bg-white text-blue-500 hover:bg-blue-50 active:scale-[0.98]'
+                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-lg shadow-blue-200/40'
                     }`}
                 >
-                  <I.Share /> 공유하기
+                  {exporting ? '처리 중...' : <><I.Share /> 내보내기</>}
+                </button>
+              ) : (
+                /* 데스크탑: 직접 다운로드 */
+                <button
+                  onClick={doExport}
+                  disabled={exporting || selected.size === 0}
+                  className={`flex-1 py-4 rounded-2xl text-base font-bold border-0 cursor-pointer flex items-center justify-center gap-2 transition-all
+                    ${exporting || selected.size === 0
+                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-lg shadow-blue-200/40'
+                    }`}
+                >
+                  {exporting ? '처리 중...' : <><I.Dl /> 이미지 저장</>}
                 </button>
               )}
-              <button
-                onClick={doExport}
-                disabled={exporting || selected.size === 0}
-                className={`flex-1 py-4 rounded-2xl text-base font-bold border-0 cursor-pointer flex items-center justify-center gap-2 transition-all
-                  ${exporting || selected.size === 0
-                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-lg shadow-blue-200/40'
-                  }`}
-              >
-                {exporting ? '처리 중...' : <><I.Dl /> 이미지 저장</>}
-              </button>
             </div>
           </div>
 

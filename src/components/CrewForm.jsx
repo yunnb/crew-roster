@@ -1,8 +1,10 @@
 import Field from './ui/Field';
 import ImgUp from './ui/ImgUp';
 import { I } from './ui/Icons';
+import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 
 export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
+  const kbOffset = useKeyboardOffset();
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
@@ -57,7 +59,8 @@ export default function CrewForm({ view, form, onReset, onSetView, onSubmit }) {
         style={{
           background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(20px)',
-          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+          paddingBottom: kbOffset > 0 ? `${kbOffset + 12}px` : 'max(12px, env(safe-area-inset-bottom))',
+          transition: 'padding-bottom 0.15s ease',
         }}
       >
         <button

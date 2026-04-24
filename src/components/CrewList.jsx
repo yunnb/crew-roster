@@ -56,7 +56,7 @@ export default function CrewList({
                 총 <strong className="text-gray-600">{list.length}</strong>명
               </span>
               <span className="text-gray-200 text-xs">|</span>
-              <div className="flex gap-1 flex-wrap">
+              <div className="flex gap-1 overflow-x-auto flex-nowrap scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {[
                   { v: 'ts', label: '최신순' },
                   { v: 'name', label: '이름순' },
@@ -66,7 +66,7 @@ export default function CrewList({
                   <button
                     key={v}
                     onClick={() => onSortChange(v)}
-                    className={`text-sm px-3 py-1.5 rounded-full border-0 cursor-pointer transition-colors min-h-[36px] flex items-center
+                    className={`flex-shrink-0 text-sm px-3 py-1.5 rounded-full border-0 cursor-pointer transition-colors min-h-[36px] flex items-center
                       ${sortBy === v
                         ? 'bg-blue-500 text-white'
                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
