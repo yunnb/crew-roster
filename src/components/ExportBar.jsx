@@ -1,7 +1,5 @@
 import { I } from './ui/Icons';
 
-const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
-
 export default function ExportBar({ exporting, selectedCount, onShare, onDownload }) {
   const disabled = exporting || selectedCount === 0;
 
@@ -28,16 +26,14 @@ export default function ExportBar({ exporting, selectedCount, onShare, onDownloa
         )}
       </div>
       <div className="flex gap-2">
-        {/* 이미지 저장: 모바일=공유 시트로 갤러리 저장 / 데스크탑=blob 다운로드 */}
+        {/* 공유하기 — 좌측 (Secondary) */}
+        <button onClick={onShare} disabled={disabled} className={secondaryCls}>
+          <I.Share /> 공유하기
+        </button>
+        {/* 이미지 저장 — 우측 (Primary) */}
         <button onClick={onDownload} disabled={disabled} className={primaryCls}>
           {exporting ? '처리 중...' : <><I.Dl /> 이미지 저장</>}
         </button>
-        {/* 공유하기: 다른 앱으로 보내기 (모바일에서만 노출) */}
-        {canShare && (
-          <button onClick={onShare} disabled={disabled} className={secondaryCls}>
-            <I.Share /> 공유하기
-          </button>
-        )}
       </div>
     </div>
   );

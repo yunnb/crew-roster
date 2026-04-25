@@ -1,21 +1,31 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { I } from './Icons';
 import { compressImage } from '../../utils/imageUtils';
+import CropModal from './CropModal';
 
 export default function ImgUp({ image, onChange, label = '사진 촬영' }) {
   const inputRef = useRef(null);
+  const [cropSrc, setCropSrc] = useState(null);
 
-  const handleFile = async e => {
+  const handleFile = e => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = async dataUrl => {
+    setCropSrc(null);
     try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
       const compressed = await compressImage(file);
       onChange(compressed);
     } catch {
-      const { fileToB64 } = await import('../../utils/formatters');
-      onChange(await fileToB64(file));
+      onChange(dataUrl); // 압축 실패 시 크롭 결과 그대로 사용
     }
-    e.target.value = '';
   };
 
   return (
@@ -46,6 +56,14 @@ export default function ImgUp({ image, onChange, label = '사진 촬영' }) {
         className="sr-only"
         onChange={handleFile}
       />
+
+      {cropSrc && (
+        <CropModal
+          src={cropSrc}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={handleCropConfirm}
+        />
+      )}
     </div>
   );
 }

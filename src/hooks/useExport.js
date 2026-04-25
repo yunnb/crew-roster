@@ -24,10 +24,14 @@ function pagesToFiles(pages) {
 export function useExport(allPeople, selected, flash) {
   const [exporting, setExporting] = useState(false);
 
-  /** 모바일: 공유 시트 (갤러리 저장) */
+  /** 공유하기 — 모바일은 share sheet, 데스크탑은 share API 미지원이므로 안내 */
   const doShare = useCallback(async () => {
     const people = allPeople.filter(p => selected.has(p.id));
-    if (!people.length) { flash('내보낼 인원을 선택하세요'); return; }
+    if (!people.length) { flash('공유할 인원을 선택하세요'); return; }
+    if (typeof navigator.share !== 'function') {
+      flash('이 기기에서는 공유가 지원되지 않습니다');
+      return;
+    }
     setExporting(true);
     try {
       const pages = await buildPages(people);

@@ -3,7 +3,7 @@ import { useState } from 'react';
 export function useCrewForm() {
   const [name, setName] = useState('');
   const [ssn, setSsn] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('010-');
   const [address, setAddress] = useState('');
   const [idImage, setIdImage] = useState(null);
   const [licenseImage, setLicenseImage] = useState(null);
@@ -11,7 +11,7 @@ export function useCrewForm() {
   const reset = () => {
     setName('');
     setSsn('');
-    setPhone('');
+    setPhone('010-');
     setAddress('');
     setIdImage(null);
     setLicenseImage(null);
