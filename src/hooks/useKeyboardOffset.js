@@ -41,7 +41,7 @@ export function useViewportHeight() {
 
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-    if (!vv) return;
+    if (!vv) returnㅋ
     const update = () => setH(vv.height);
     vv.addEventListener('resize', update);
     update();

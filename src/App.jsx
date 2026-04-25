@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCrewForm } from './hooks/useCrewForm';
 import { useToast } from './hooks/useToast';
 import { useCrewData } from './hooks/useCrewData';
@@ -16,6 +16,13 @@ export default function App() {
   const [view, setView]               = useState('list');
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [sheetPerson, setSheetPerson] = useState(null);
+
+  // 가상 키보드가 콘텐츠를 덮도록(Overlay) — 키보드로 인한 viewport 축소·레이아웃 찌그러짐 방지
+  useEffect(() => {
+    if ('virtualKeyboard' in navigator) {
+      navigator.virtualKeyboard.overlaysContent = true;
+    }
+  }, []);
 
   const form                          = useCrewForm();
   const { toast, flash }              = useToast();
