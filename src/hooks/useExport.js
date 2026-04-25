@@ -40,28 +40,36 @@ export function useExport(allPeople, selected, flash) {
     }
   }, [allPeople, selected, flash]);
 
-  /** 데스크탑: Blob 다운로드 */
+  /** 이미지 저장 — 모바일은 share 시트로 "이미지 저장"(갤러리), 데스크탑은 blob 다운로드 */
   const doDownload = useCallback(async () => {
     const people = allPeople.filter(p => selected.has(p.id));
     if (!people.length) { flash('내보낼 인원을 선택하세요'); return; }
     setExporting(true);
     try {
       const pages = await buildPages(people);
-      for (const { canvas, name } of pages) {
-        await new Promise(resolve => {
-          canvas.toBlob(blob => {
-            const url = URL.createObjectURL(blob);
-            const a   = document.createElement('a');
-            a.href     = url;
-            a.download = name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => { URL.revokeObjectURL(url); resolve(); }, 150);
-          }, 'image/png');
-        });
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isMobile && typeof navigator.share === 'function') {
+        // iOS Safari는 <a download>로 갤러리 저장 불가 → share sheet의 "이미지 저장" 사용
+        const files = await pagesToFiles(pages);
+        await navigator.share({ files, title: '인력 명단' });
+      } else {
+        for (const { canvas, name } of pages) {
+          await new Promise(resolve => {
+            canvas.toBlob(blob => {
+              const url = URL.createObjectURL(blob);
+              const a   = document.createElement('a');
+              a.href     = url;
+              a.download = name;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              setTimeout(() => { URL.revokeObjectURL(url); resolve(); }, 150);
+            }, 'image/png');
+          });
+        }
+        flash(`${pages.length}장 다운로드 완료`);
       }
-      flash(`${pages.length}장 다운로드 완료`);
     } catch (e) {
       if (e?.name !== 'AbortError') { flash('오류가 발생했습니다'); console.error(e); }
     } finally {

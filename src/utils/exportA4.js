@@ -90,6 +90,10 @@ export async function renderA4(people) {
   canvas.height = H;
   const ctx = canvas.getContext('2d');
 
+  // 사진(신분증·면허증) 다운스케일링 시 텍스트 가독성 향상
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, W, H);
 
