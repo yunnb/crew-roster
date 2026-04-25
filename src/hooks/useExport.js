@@ -24,21 +24,17 @@ function pagesToFiles(pages) {
 export function useExport(allPeople, selected, flash) {
   const [exporting, setExporting] = useState(false);
 
-  /** 공유하기 — 모바일은 share sheet, 데스크탑은 share API 미지원이므로 안내 */
+  /** 공유하기 — Web Share API */
   const doShare = useCallback(async () => {
     const people = allPeople.filter(p => selected.has(p.id));
     if (!people.length) { flash('공유할 인원을 선택하세요'); return; }
-    if (typeof navigator.share !== 'function') {
-      flash('이 기기에서는 공유가 지원되지 않습니다');
-      return;
-    }
     setExporting(true);
     try {
       const pages = await buildPages(people);
       const files = await pagesToFiles(pages);
       await navigator.share({ files, title: '인력 명단' });
     } catch (e) {
-      if (e?.name !== 'AbortError') { flash('오류가 발생했습니다'); console.error(e); }
+      if (e?.name !== 'AbortError') { flash('공유에 실패했습니다'); console.error(e); }
     } finally {
       setExporting(false);
     }
